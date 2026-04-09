@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  events       Event[]
+}
+
+model Event {
+  id                  String             @id @default(cuid())
+  title               String
+  description         String?
+  startsAt            DateTime
+  endsAt              DateTime
+  latitude            Float
+  longitude           Float
+  allowedRadiusMeters Int
+  qrRotationSeconds   Int                @default(60)
+  createdByAdminId    String
+  createdAt           DateTime           @default(now())
+  admin               Admin              @relation(fields: [createdByAdminId], references: [id])
+  participants        EventParticipant[]
+  attendances         Attendance[]
+}
+
+model Participant {
+  id            String             @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  createdAt     DateTime           @default(now())
+  registrations EventParticipant[]
+  attendances   Attendance[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model EventParticipant {
+  id                     String     @id @default(cuid())
+  eventId                String
+  participantId          String
+  sourceType             SourceType @default(MANUAL)
+  isMarkedPresentManually Boolean   @default(false)
+  isMarkedAbsentManually  Boolean   @default(false)
+  createdAt              DateTime   @default(now())
+  event                  Event      @relation(fields: [eventId], references: [id])
+  participant            Participant @relation(fields: [participantId], references: [id])
+
+  @@unique([eventId, participantId])
+}
+
+model Attendance {
+  id              String      @id @default(cuid())
+  eventId         String
+  participantId   String
+  checkedInAt     DateTime    @default(now())
+  latitude        Float
+  longitude       Float
+  distanceMeters  Float
+  qrSlot          String
+  qrSignatureHash String
+  createdAt       DateTime    @default(now())
+  event           Event       @relation(fields: [eventId], references: [id])
+  participant     Participant @relation(fields: [participantId], references: [id])
+
+  @@unique([eventId, participantId])
+}
+
+enum SourceType {
+  MANUAL
+  CSV
+  WALK_IN
+}
