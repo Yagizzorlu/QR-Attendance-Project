@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const events = await eventService.getAllEvents(session.adminId);
+    const events = await eventService.getAllEvents();
     return NextResponse.json({ success: true, data: events });
   } catch (err) {
     console.error("[GET /api/events]", err);

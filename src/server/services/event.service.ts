@@ -31,8 +31,8 @@ export class NotFoundError extends Error {
 export class EventService {
   private repo = new EventRepository();
 
-  async getAllEvents(adminId: string) {
-    return this.repo.findAll(adminId);
+  async getAllEvents() {
+    return this.repo.findAll();
   }
 
   async getEventById(eventId: string) {

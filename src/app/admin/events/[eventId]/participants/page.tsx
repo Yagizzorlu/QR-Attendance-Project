@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { EventParticipantService } from "@/server/services/event-participant.service";
 import { MarkControls } from "./mark-controls";
 import { ImportCsv } from "./import-csv";
+import { AddParticipant } from "./add-participant";
 import { LogoutButton } from "@/app/admin/logout-button";
 import { verifySession } from "@/lib/auth/session";
 
@@ -79,7 +80,8 @@ export default async function ParticipantsPage({
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4 flex flex-col gap-3">
+          <AddParticipant eventId={eventId} />
           <ImportCsv eventId={eventId} />
         </div>
 

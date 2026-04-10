@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ParticipantImportService } from "@/server/services/participant-import.service";
+import { verifySession } from "@/lib/auth/session";
 
 const participantImportService = new ParticipantImportService();
 
@@ -11,6 +12,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  const token = request.cookies.get("session")?.value;
+  if (!token || !verifySession(token)) {
+    return err(401, "UNAUTHORIZED", "Unauthorized");
+  }
+
   const { eventId } = await params;
 
   const body = await request.json().catch(() => null);

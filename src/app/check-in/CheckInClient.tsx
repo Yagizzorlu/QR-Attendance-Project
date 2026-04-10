@@ -33,12 +33,12 @@ const QR_ERROR_MESSAGES: Record<string, string> = {
   QR_EXPIRED:           "Bu QR kod artık geçerli değil.",
   EVENT_NOT_STARTED:    "Etkinlik henüz başlamadı.",
   EVENT_ENDED:          "Bu etkinlik sona erdi.",
-  LOCATION_UNAVAILABLE: "Konum doğrulanamadı.",
+  LOCATION_UNAVAILABLE: "Konum bilgisi alınamadı. Lütfen konum iznini etkinleştirin.",
   OUT_OF_RANGE:         "Etkinlik alanı dışındasınız.",
 };
 
 const inputCls =
-  "w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-base text-slate-100 placeholder-slate-500 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
 export default function CheckInClient() {
   const params  = useSearchParams();
@@ -49,6 +49,7 @@ export default function CheckInClient() {
   const [step, setStep]                           = useState<Step>("loading");
   const [qrError, setQrError]                     = useState<string | null>(null);
   const [validated, setValidated]                 = useState<ValidateResult | null>(null);
+  const [gps, setGps]                             = useState<{ latitude: number; longitude: number } | null>(null);
   const [contact, setContact]                     = useState("");
   const [resolving, setResolving]                 = useState(false);
   const [resolveError, setResolveError]           = useState<string | null>(null);
@@ -68,6 +69,12 @@ export default function CheckInClient() {
     }
 
     async function validate() {
+      if (!navigator?.geolocation) {
+        setQrError("LOCATION_UNAVAILABLE");
+        setStep("qr-error");
+        return;
+      }
+
       let latitude: number;
       let longitude: number;
 
@@ -80,6 +87,7 @@ export default function CheckInClient() {
         );
         latitude  = pos.coords.latitude;
         longitude = pos.coords.longitude;
+        setGps({ latitude, longitude });
       } catch {
         setQrError("LOCATION_UNAVAILABLE");
         setStep("qr-error");
@@ -106,12 +114,13 @@ export default function CheckInClient() {
   }, [eventId, slot, sig]);
 
   useEffect(() => {
-    if (step !== "found" || !found || !validated || !sig) return;
+    if (step !== "found" || !found || !validated || !sig || !gps) return;
 
     setStep("completing");
 
     const v = validated;
     const f = found;
+    const g = gps;
 
     async function complete() {
       try {
@@ -119,10 +128,13 @@ export default function CheckInClient() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            eventId: v.eventId,
-            participantId: f.participantId,
-            qrSlot: v.slot,
+            eventId:        v.eventId,
+            participantId:  f.participantId,
+            qrSlot:         v.slot,
             qrSignatureHash: sig,
+            latitude:        g.latitude,
+            longitude:       g.longitude,
+            distanceMeters:  v.distanceMeters,
           }),
         });
         const data = await res.json();
@@ -147,7 +159,7 @@ export default function CheckInClient() {
     }
 
     complete();
-  }, [step, found, validated, sig]);
+  }, [step, found, validated, sig, gps]);
 
   async function handleIdentify(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -186,18 +198,21 @@ export default function CheckInClient() {
 
   async function handleRegister(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!validated || !sig) return;
+    if (!validated || !sig || !gps) return;
     setRegistering(true);
     setRegisterError(null);
 
     const isEmail = contact.includes("@");
     const body = {
-      eventId: validated.eventId,
-      firstName: regFirstName.trim(),
-      lastName: regLastName.trim(),
+      eventId:         validated.eventId,
+      firstName:       regFirstName.trim(),
+      lastName:        regLastName.trim(),
       ...(isEmail ? { email: contact.trim() } : { phone: contact.trim() }),
-      qrSlot: validated.slot,
+      qrSlot:          validated.slot,
       qrSignatureHash: sig,
+      latitude:        gps.latitude,
+      longitude:       gps.longitude,
+      distanceMeters:  validated.distanceMeters,
     };
 
     try {
@@ -226,33 +241,38 @@ export default function CheckInClient() {
     }
   }
 
+  /* ── Loading / completing ─────────────────────────────────── */
   if (step === "loading" || step === "completing") {
     const label = step === "completing" ? "Yoklama kaydediliyor..." : "Konum ve QR doğrulanıyor...";
     return (
       <FullScreen>
         <div className="flex flex-col items-center gap-4">
-          <span className="h-10 w-10 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">{label}</p>
+          <span className="h-10 w-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm">{label}</p>
         </div>
       </FullScreen>
     );
   }
 
+  /* ── QR / location error ──────────────────────────────────── */
   if (step === "qr-error") {
     const message = qrError ? (QR_ERROR_MESSAGES[qrError] ?? "Bir hata oluştu.") : "Bir hata oluştu.";
+    const isEventTime = qrError === "EVENT_NOT_STARTED" || qrError === "EVENT_ENDED";
+    const isExpired   = qrError === "QR_EXPIRED";
+
     return (
       <FullScreen>
-        <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-          <span className="text-5xl">⚠️</span>
+        <div className="flex flex-col items-center gap-5 text-center max-w-xs">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isEventTime ? "bg-amber-100" : "bg-red-100"}`}>
+            <span className={`text-2xl font-bold ${isEventTime ? "text-amber-600" : "text-red-600"}`}>!</span>
+          </div>
           <div>
-            <p className="text-lg font-semibold text-white">
-              {qrError === "EVENT_NOT_STARTED" || qrError === "EVENT_ENDED"
-                ? "Etkinlik Aktif Değil"
-                : "QR Geçersiz"}
+            <p className="text-lg font-semibold text-slate-800">
+              {isEventTime ? "Etkinlik Aktif Değil" : "Doğrulama Başarısız"}
             </p>
-            <p className="mt-1 text-sm text-slate-400">{message}</p>
-            {qrError === "QR_EXPIRED" && (
-              <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">{message}</p>
+            {isExpired && (
+              <p className="mt-2 text-xs text-slate-400">
                 Lütfen ekrandaki güncel QR kodu tekrar okutun.
               </p>
             )}
@@ -262,14 +282,15 @@ export default function CheckInClient() {
     );
   }
 
+  /* ── Identify ─────────────────────────────────────────────── */
   if (step === "identify") {
     return (
       <FullScreen>
         <div className="w-full max-w-sm flex flex-col gap-6">
           <div className="text-center">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{validated?.eventTitle}</p>
-            <h1 className="text-2xl font-semibold text-white">Kimliğinizi Doğrulayın</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">{validated?.eventTitle}</p>
+            <h1 className="text-2xl font-semibold text-slate-800">Kimliğinizi Doğrulayın</h1>
+            <p className="mt-1 text-sm text-slate-500">
               Kayıtlı e-posta veya telefon numaranızı girin.
             </p>
           </div>
@@ -277,16 +298,16 @@ export default function CheckInClient() {
             <input
               value={contact}
               onChange={(e) => setContact(e.target.value)}
-              placeholder="E-posta veya telefon"
+              placeholder="ornek@mail.com veya 05551234567"
               required
               autoFocus
               className={inputCls}
             />
-            {resolveError && <p className="text-sm text-red-400">{resolveError}</p>}
+            {resolveError && <p className="text-sm text-red-500">{resolveError}</p>}
             <button
               type="submit"
               disabled={resolving}
-              className="inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
+              className="inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
             >
               {resolving ? (
                 <>
@@ -303,45 +324,57 @@ export default function CheckInClient() {
     );
   }
 
+  /* ── Success ──────────────────────────────────────────────── */
   if (step === "completed" && found) {
     return (
       <FullScreen>
-        <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-          <span className="text-6xl">✅</span>
+        <div className="flex flex-col items-center gap-5 text-center max-w-xs">
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+            <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
           <div>
-            <p className="text-xl font-semibold text-white">Yoklamanız Alındı</p>
-            <p className="mt-1 text-base text-slate-300">{found.fullName}</p>
-            <p className="mt-0.5 text-sm text-slate-500">{validated?.eventTitle}</p>
+            <p className="text-xl font-semibold text-slate-800">Yoklamanız Alındı</p>
+            <p className="mt-1 text-base text-slate-600">{found.fullName}</p>
+            <p className="mt-0.5 text-sm text-slate-400">{validated?.eventTitle}</p>
           </div>
         </div>
       </FullScreen>
     );
   }
 
+  /* ── Complete error ───────────────────────────────────────── */
   if (step === "complete-error") {
+    const isDuplicate = completeErrorCode === "DUPLICATE_ATTENDANCE";
     return (
       <FullScreen>
-        <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-          <span className="text-5xl">⚠️</span>
+        <div className="flex flex-col items-center gap-5 text-center max-w-xs">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isDuplicate ? "bg-amber-100" : "bg-red-100"}`}>
+            <span className={`text-2xl font-bold ${isDuplicate ? "text-amber-600" : "text-red-600"}`}>
+              {isDuplicate ? "i" : "!"}
+            </span>
+          </div>
           <div>
-            <p className="text-lg font-semibold text-white">
-              {completeErrorCode === "DUPLICATE_ATTENDANCE" ? "Zaten Kayıtlısınız" : "Hata Oluştu"}
+            <p className="text-lg font-semibold text-slate-800">
+              {isDuplicate ? "Zaten Kayıtlısınız" : "Hata Oluştu"}
             </p>
-            <p className="mt-1 text-sm text-slate-400">{completeError}</p>
+            <p className="mt-1 text-sm text-slate-500">{completeError}</p>
           </div>
         </div>
       </FullScreen>
     );
   }
 
+  /* ── Not found — walk-in registration ────────────────────── */
   if (step === "not-found") {
     return (
       <FullScreen>
         <div className="w-full max-w-sm flex flex-col gap-6">
           <div className="text-center">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{validated?.eventTitle}</p>
-            <h1 className="text-2xl font-semibold text-white">Kayıt Ol</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">{validated?.eventTitle}</p>
+            <h1 className="text-2xl font-semibold text-slate-800">Kayıt Ol</h1>
+            <p className="mt-1 text-sm text-slate-500">
               Sisteme kayıtlı değilsiniz. Bilgilerinizi girerek devam edin.
             </p>
           </div>
@@ -366,11 +399,11 @@ export default function CheckInClient() {
               readOnly
               className={`${inputCls} opacity-50 cursor-not-allowed`}
             />
-            {registerError && <p className="text-sm text-red-400">{registerError}</p>}
+            {registerError && <p className="text-sm text-red-500">{registerError}</p>}
             <button
               type="submit"
               disabled={registering}
-              className="inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
+              className="inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
             >
               {registering ? (
                 <>
@@ -392,7 +425,7 @@ export default function CheckInClient() {
 
 function FullScreen({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       {children}
     </main>
   );

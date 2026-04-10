@@ -33,7 +33,7 @@ export default async function EventsPage() {
 
   if (!session) redirect("/login");
 
-  const events = await eventService.getAllEvents(session.adminId);
+  const events = await eventService.getAllEvents();
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type FormState = {
   title: string;
@@ -21,20 +22,23 @@ const initialState: FormState = {
   latitude: "",
   longitude: "",
   allowedRadiusMeters: "100",
-  qrRotationSeconds: "60",
+  qrRotationSeconds: "180",
 };
 
 export default function NewEventPage() {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>(initialState);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+    setFormError(null);
 
     try {
       const res = await fetch("/api/events", {
@@ -55,15 +59,14 @@ export default function NewEventPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message ?? "Bir hata oluştu.");
+        setFormError(data.message ?? "Bir hata oluştu.");
         return;
       }
 
-      alert("Event created");
-      setForm(initialState);
+      router.push(`/admin/events/${data.data.id}`);
     } catch (err) {
       console.error("[NewEventPage] submit error:", err);
-      alert("Bir hata oluştu.");
+      setFormError("Sunucuya ulaşılamadı.");
     } finally {
       setLoading(false);
     }
@@ -214,6 +217,11 @@ export default function NewEventPage() {
           </Section>
 
           {/* Actions */}
+          {formError && (
+            <div className="mx-6 mb-0 mt-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{formError}</p>
+            </div>
+          )}
           <div className="flex items-center justify-between px-6 py-5">
             <a
               href="/admin/events"

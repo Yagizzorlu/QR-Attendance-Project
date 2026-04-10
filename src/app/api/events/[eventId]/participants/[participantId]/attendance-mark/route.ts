@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { verifySession } from "@/lib/auth/session";
 
 function err(status: number, code: string, message: string) {
   return NextResponse.json({ success: false, code, message }, { status });
@@ -12,6 +13,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string; participantId: string }> }
 ) {
+  const token = request.cookies.get("session")?.value;
+  if (!token || !verifySession(token)) {
+    return err(401, "UNAUTHORIZED", "Unauthorized");
+  }
+
   const { eventId, participantId } = await params;
 
   const body = await request.json().catch(() => null);

@@ -13,9 +13,8 @@ export type CreateEventInput = {
 };
 
 export class EventRepository {
-  async findAll(adminId: string) {
+  async findAll() {
     return prisma.event.findMany({
-      where: { createdByAdminId: adminId },
       orderBy: { startsAt: "desc" },
     });
   }

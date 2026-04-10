@@ -17,12 +17,15 @@ export async function POST(request: NextRequest) {
     !body.firstName ||
     !body.lastName ||
     !body.qrSlot ||
-    !body.qrSignatureHash
+    !body.qrSignatureHash ||
+    typeof body.latitude  !== "number" ||
+    typeof body.longitude !== "number" ||
+    typeof body.distanceMeters !== "number"
   ) {
-    return err(400, "INVALID_REQUEST", "eventId, firstName, lastName, qrSlot ve qrSignatureHash zorunludur.");
+    return err(400, "INVALID_REQUEST", "eventId, firstName, lastName, qrSlot, qrSignatureHash, latitude, longitude ve distanceMeters zorunludur.");
   }
 
-  const { eventId, firstName, lastName, email, phone, qrSlot, qrSignatureHash } = body as {
+  const { eventId, firstName, lastName, email, phone, qrSlot, qrSignatureHash, latitude, longitude, distanceMeters } = body as {
     eventId: string;
     firstName: string;
     lastName: string;
@@ -30,6 +33,9 @@ export async function POST(request: NextRequest) {
     phone?: string;
     qrSlot: string;
     qrSignatureHash: string;
+    latitude: number;
+    longitude: number;
+    distanceMeters: number;
   };
 
   if (!email && !phone) {
@@ -37,9 +43,11 @@ export async function POST(request: NextRequest) {
   }
 
   const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event) {
-    return err(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
-  }
+  if (!event) return err(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
+
+  const now = new Date();
+  if (now < event.startsAt) return err(400, "EVENT_NOT_STARTED", "Etkinlik henüz başlamadı.");
+  if (now > event.endsAt)   return err(400, "EVENT_ENDED", "Etkinlik sona erdi.");
 
   const participant = await participantService.registerWalkIn({
     eventId,
@@ -52,9 +60,7 @@ export async function POST(request: NextRequest) {
   const existing = await prisma.attendance.findUnique({
     where: { eventId_participantId: { eventId, participantId: participant.id } },
   });
-  if (existing) {
-    return err(409, "DUPLICATE_ATTENDANCE", "Yoklamanız zaten alınmış.");
-  }
+  if (existing) return err(409, "DUPLICATE_ATTENDANCE", "Yoklamanız zaten alınmış.");
 
   const attendance = await prisma.attendance.create({
     data: {
@@ -62,9 +68,9 @@ export async function POST(request: NextRequest) {
       participantId: participant.id,
       qrSlot,
       qrSignatureHash,
-      latitude: 0,
-      longitude: 0,
-      distanceMeters: 0,
+      latitude,
+      longitude,
+      distanceMeters,
     },
   });
 
