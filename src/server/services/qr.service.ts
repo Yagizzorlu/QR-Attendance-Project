@@ -23,7 +23,16 @@ export class QrService {
     const slotStart = getSlotStart(now, event.qrRotationSeconds);
     const slotEnd = getSlotEnd(slotStart, event.qrRotationSeconds);
     const payload = buildQrTokenPayload(event.id, slotStart);
-    const qrValue = JSON.stringify(payload);
+
+    const baseUrl = process.env["APP_URL"];
+    if (!baseUrl) throw new Error("APP_URL is missing");
+
+    const params = new URLSearchParams({
+      eventId: payload.eventId,
+      slot:    payload.slot,
+      sig:     payload.sig,
+    });
+    const qrValue = `${baseUrl}/check-in?${params.toString()}`;
 
     return {
       eventId: event.id,
