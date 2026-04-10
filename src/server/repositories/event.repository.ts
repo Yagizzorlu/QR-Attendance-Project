@@ -16,6 +16,11 @@ export class EventRepository {
   async findAll() {
     return prisma.event.findMany({
       orderBy: { startsAt: "desc" },
+      include: {
+        _count: {
+          select: { participants: true, attendances: true },
+        },
+      },
     });
   }
 

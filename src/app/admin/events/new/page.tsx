@@ -77,18 +77,21 @@ export default function NewEventPage() {
       <div className="max-w-4xl mx-auto">
 
         {/* Breadcrumb */}
-        <p className="text-xs text-slate-500 tracking-wide uppercase mb-4">
-          Admin &rsaquo; Events &rsaquo; New
-        </p>
+        <div className="flex items-center gap-2 text-xs text-slate-500 mb-6">
+          <a href="/admin/events" className="hover:text-slate-300 transition-colors">Events</a>
+          <span>/</span>
+          <span className="text-slate-400">Yeni Etkinlik</span>
+        </div>
 
         {/* Page header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-white tracking-tight">
-            Create New Event
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Define event details, location and QR rotation settings.
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Yeni Etkinlik Oluştur</h1>
+            <p className="mt-1 text-sm text-slate-400">Etkinlik bilgilerini, konumunu ve QR ayarlarını belirleyin.</p>
+          </div>
+          <a href="/admin/events" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+            ← Geri
+          </a>
         </div>
 
         {/* Form card */}
@@ -218,21 +221,15 @@ export default function NewEventPage() {
 
           {/* Actions */}
           {formError && (
-            <div className="mx-6 mb-0 mt-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+            <div className="mx-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
               <p className="text-sm text-red-400">{formError}</p>
             </div>
           )}
-          <div className="flex items-center justify-between px-6 py-5">
-            <a
-              href="/admin/events"
-              className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              ← Back to Events
-            </a>
+          <div className="flex items-center justify-end px-6 py-5">
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shadow-lg shadow-blue-600/20"
             >
               {loading ? (
                 <>
@@ -240,7 +237,7 @@ export default function NewEventPage() {
                   Saving...
                 </>
               ) : (
-                "Create Event"
+                "Etkinliği Oluştur"
               )}
             </button>
           </div>
