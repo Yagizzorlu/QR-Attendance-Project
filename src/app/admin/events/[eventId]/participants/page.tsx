@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { EventParticipantService } from "@/server/services/event-participant.service";
 import { MarkControls } from "./mark-controls";
 import { ImportCsv } from "./import-csv";
 import { LogoutButton } from "@/app/admin/logout-button";
+import { verifySession } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 const eventParticipantService = new EventParticipantService();
 
@@ -29,6 +33,11 @@ export default async function ParticipantsPage({
 }: {
   params: Promise<{ eventId: string }>;
 }) {
+  const cookieStore = await cookies();
+  const token       = cookieStore.get("session")?.value;
+  const session     = token ? verifySession(token) : null;
+  if (!session) redirect("/login");
+
   const { eventId } = await params;
 
   let rows;

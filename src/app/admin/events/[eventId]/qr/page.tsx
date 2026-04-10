@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import QRCode from "qrcode";
 import { QrService } from "@/server/services/qr.service";
 import { LogoutButton } from "@/app/admin/logout-button";
+import { verifySession } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 const qrService = new QrService();
 
@@ -22,6 +26,11 @@ export default async function EventQrPage({
 }: {
   params: Promise<{ eventId: string }>;
 }) {
+  const cookieStore = await cookies();
+  const token       = cookieStore.get("session")?.value;
+  const session     = token ? verifySession(token) : null;
+  if (!session) redirect("/login");
+
   const { eventId } = await params;
 
   let result;

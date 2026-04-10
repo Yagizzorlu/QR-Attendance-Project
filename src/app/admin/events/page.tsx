@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { EventService } from "@/server/services/event.service";
 import { LogoutButton } from "@/app/admin/logout-button";
+import { verifySession } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 const eventService = new EventService();
-
-async function getEvents() {
-  return eventService.getAllEvents("seed-admin-id");
-}
 
 function eventStatus(startsAt: Date, endsAt: Date) {
   const now = new Date();
@@ -26,7 +27,13 @@ function fmt(date: Date) {
 }
 
 export default async function EventsPage() {
-  const events = await getEvents();
+  const cookieStore = await cookies();
+  const token       = cookieStore.get("session")?.value;
+  const session     = token ? verifySession(token) : null;
+
+  if (!session) redirect("/login");
+
+  const events = await eventService.getAllEvents(session.adminId);
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10">
@@ -42,13 +49,15 @@ export default async function EventsPage() {
               Manage your events and monitor attendance.
             </p>
           </div>
-          <Link
-            href="/admin/events/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
-          >
-            + Create New Event
-          </Link>
-          <LogoutButton />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/events/new"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+            >
+              + Create New Event
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         {events.length === 0 ? (

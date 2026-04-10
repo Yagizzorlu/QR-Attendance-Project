@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { EventService } from "@/server/services/event.service";
 import { LogoutButton } from "@/app/admin/logout-button";
+import { verifySession } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 const eventService = new EventService();
 
@@ -27,6 +31,11 @@ export default async function EventDetailPage({
 }: {
   params: Promise<{ eventId: string }>;
 }) {
+  const cookieStore = await cookies();
+  const token       = cookieStore.get("session")?.value;
+  const session     = token ? verifySession(token) : null;
+  if (!session) redirect("/login");
+
   const { eventId } = await params;
 
   let event;

@@ -31,6 +31,8 @@ const QR_ERROR_MESSAGES: Record<string, string> = {
   EVENT_NOT_FOUND:      "Etkinlik bulunamadı.",
   INVALID_QR:           "Bu QR kod tanınmıyor.",
   QR_EXPIRED:           "Bu QR kod artık geçerli değil.",
+  EVENT_NOT_STARTED:    "Etkinlik henüz başlamadı.",
+  EVENT_ENDED:          "Bu etkinlik sona erdi.",
   LOCATION_UNAVAILABLE: "Konum doğrulanamadı.",
   OUT_OF_RANGE:         "Etkinlik alanı dışındasınız.",
 };
@@ -243,7 +245,11 @@ export default function CheckInClient() {
         <div className="flex flex-col items-center gap-4 text-center max-w-xs">
           <span className="text-5xl">⚠️</span>
           <div>
-            <p className="text-lg font-semibold text-white">QR Geçersiz</p>
+            <p className="text-lg font-semibold text-white">
+              {qrError === "EVENT_NOT_STARTED" || qrError === "EVENT_ENDED"
+                ? "Etkinlik Aktif Değil"
+                : "QR Geçersiz"}
+            </p>
             <p className="mt-1 text-sm text-slate-400">{message}</p>
             {qrError === "QR_EXPIRED" && (
               <p className="mt-2 text-xs text-slate-500">

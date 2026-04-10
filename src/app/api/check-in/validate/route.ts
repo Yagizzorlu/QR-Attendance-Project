@@ -47,8 +47,18 @@ export async function POST(request: NextRequest) {
     return err(400, "INVALID_QR", "QR imzası geçersiz.");
   }
 
+  const now = new Date();
+
+  if (now < event.startsAt) {
+    return err(400, "EVENT_NOT_STARTED", "Etkinlik henüz başlamadı.");
+  }
+
+  if (now > event.endsAt) {
+    return err(400, "EVENT_ENDED", "Etkinlik sona erdi.");
+  }
+
   const slotEnd = getSlotEnd(slotDate, event.qrRotationSeconds);
-  if (new Date() > slotEnd) {
+  if (now > slotEnd) {
     return err(400, "QR_EXPIRED", "QR kodunun süresi dolmuş.");
   }
 

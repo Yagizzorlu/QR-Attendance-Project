@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { AttendanceService } from "@/server/services/attendance.service";
 import { LogoutButton } from "@/app/admin/logout-button";
+import { verifySession } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
 
 const attendanceService = new AttendanceService();
 
@@ -20,6 +24,11 @@ export default async function AttendancePage({
 }: {
   params: Promise<{ eventId: string }>;
 }) {
+  const cookieStore = await cookies();
+  const token       = cookieStore.get("session")?.value;
+  const session     = token ? verifySession(token) : null;
+  if (!session) redirect("/login");
+
   const { eventId } = await params;
 
   let rows;
