@@ -90,10 +90,10 @@ export default async function EventQrPage({
             <Row label="Signature"  value={result.payload.sig} mono />
           </Section>
 
-          <Section title="Raw Payload">
-            <pre className="text-xs text-slate-300 bg-slate-800 rounded-lg px-4 py-4 overflow-x-auto leading-relaxed">
-              {JSON.stringify(result.payload, null, 2)}
-            </pre>
+          <Section title="QR URL">
+            <p className="text-xs text-slate-400 font-mono break-all bg-slate-800 rounded-lg px-4 py-4 leading-relaxed">
+              {result.qrValue}
+            </p>
           </Section>
 
         </div>
